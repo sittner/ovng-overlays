@@ -1,0 +1,339 @@
+/dts-v1/;
+/plugin/;
+
+#include <dt-bindings/board/am335x-bbw-bbb-base.h>
+#include <dt-bindings/pinctrl/am33xx.h>
+
+/ {
+	compatible = "ti,beaglebone", "ti,beaglebone-black", "ti,beaglebone-green";
+
+	// identification
+	part-number = "BB-OVNG";
+	version = "00A0";
+
+	// resources this cape uses
+	exclusive-use =
+		"P9.18",	// i2c1_sda
+		"P9.17",	// i2c1_scl
+		"P9.21",	// uart2_txd
+		"P9.22",	// uart2_rxd
+		"P9.13",	// uart4_txd
+		"P9.11",	// uart4_rxd
+
+		"P9.42",	// enc0: gpio0_7 A
+		"P9.41",	// enc0: gpio0_20 B
+		"P8.16",	// enc0: gpio1_14 BUTTON
+
+		"P8.14",	// enc1: gpio0_26 A
+		"P8.11",	// enc1: gpio1_13 B
+		"P8.15",	// enc1: gpio1_15 BUTTON
+
+		"P9.31",	// audio: mcasp0_aclkx
+		"P9.29",	// audio: mcasp0_fsx
+		"P9.28",	// audio: mcasp0_axr2
+		"P9.25",	// audio: mcasp0_ahclkx
+		"P8.17",	// audio: gpio0_27 mute
+
+		"i2c1",		// hardware ip used
+		"uart2",
+		"uart4",
+		"mcasp0",
+		"gpio0_7",	// enc0: gpio0_7 A
+		"gpio3_18",
+		"gpio0_20",	// enc0: gpio0_20 B
+		"gpio3_20",
+		"gpio1_14",	// enc0: gpio1_14 BTN
+		"gpio0_26",	// enc1: gpio0_26 A
+		"gpio1_13",	// enc1: gpio1_13 B
+		"gpio1_15",	// enc1: gpio1_15 BTN
+		"gpio0_27";	// audio: gpio0_27 mute
+
+
+
+	fragment@0 {
+		target-path="/";
+		__overlay__ {
+			aliases {
+				rtc0 = &extrtc;
+				/* The OMAP RTC implementation in the BBB is
+				 * buggy, so that it cannot be used as a
+				 * battery-backed RTS, so that it loses its
+				 * contents when power is removed from the
+				 * Beaglebone...
+				 *
+				 * We move the omap built-in RTC to rtc1, so
+				 * that userspace defaults to using the DS1338.
+				 *
+				 * The omap RTC must remain enabled because it
+				 * is also used during the reboot process on the
+				 * BBB.
+				 */
+				rtc1 = "/ocp/rtc@44e3e000";
+			};
+
+
+			clk_mcasp0_fixed: clk_mcasp0_fixed {
+				#clock-cells = <0>;
+				compatible = "fixed-clock";
+				clock-frequency = <24576000>;
+			};
+
+			clk_mcasp0: clk_mcasp0 {
+				#clock-cells = <0>;
+				compatible = "gpio-gate-clock";
+				clocks = <&clk_mcasp0_fixed>;
+				enable-gpios = <&gpio1 27 0>; // BeagleBone Black Clk enable on GPIO1_27
+			};
+
+			pcm5102a: pcm5102a {
+				pinctrl-names = "default";
+				pinctrl-0 = <&dac_pins>;
+				#sound-dai-cells = <0>;
+				compatible = "ti,pcm5102a";
+				mute-gpios = <&gpio0 27 1>;
+			};
+
+			sound {
+				compatible = "simple-audio-card";
+				simple-audio-card,name = "OpenVarioNG PCM Audio";
+				simple-audio-card,format = "i2s";
+				simple-audio-card,bitclock-master = <&sound_master>;
+				simple-audio-card,frame-master = <&sound_master>;
+
+				sound_master: simple-audio-card,cpu {
+					sound-dai = <&mcasp0>;
+					clocks = <&clk_mcasp0>;
+				};
+
+				simple-audio-card,codec {
+					sound-dai = <&pcm5102a>;
+				};
+			};
+
+			enc0 {
+				pinctrl-names = "default";
+				pinctrl-0 = <&enc0_pins>;
+				compatible = "rotary-encoder";
+				gpios = <&gpio0 7 1>, <&gpio0 20 1>;
+				rotary-encoder,encoding = "gray";
+				linux,keycodes = <108>, <103>; // DOWN/UP
+			};
+
+			enc1 {
+				pinctrl-names = "default";
+				pinctrl-0 = <&enc1_pins>;
+				compatible = "rotary-encoder";
+				gpios = <&gpio0 26 1>, <&gpio1 13 1>;
+				rotary-encoder,encoding = "gray";
+				linux,keycodes = <106>, <105>; // RIGHT/LEFT
+			};
+
+			enc_btn {
+				compatible = "gpio-keys";
+				pinctrl-names = "default";
+				pinctrl-0 = <&enc_btn_pins>;
+
+				enc0_btn {
+					debounce_interval = <50>;
+					linux,code = <28>;
+					label = "enter";
+					gpios = <&gpio1 14 1>;
+				};
+
+				enc1_btn {
+					debounce_interval = <50>;
+					linux,code = <1>;
+					label = "esc";
+					gpios = <&gpio1 15 1>;
+				};
+			};
+		};
+	};
+
+	/*
+	 * Free up the pins used by the cape from the pinmux helpers.
+	 */
+	fragment@1 {
+		target = <&ocp>;
+		__overlay__ {
+			P9_17_pinmux { status = "disabled"; };	// i2c1_scl
+			P9_18_pinmux { status = "disabled"; };	// i2c1_sda
+
+			P9_21_pinmux { status = "disabled"; };	// P9_21: spi0_d0.uart2_txd
+			P9_22_pinmux { status = "disabled"; };	// P9_22: spi0_sclk.uart2_rxd
+
+			P9_13_pinmux { status = "disabled"; };	// uart4_txd
+			P9_11_pinmux { status = "disabled"; };	// uart4_rxd
+
+			P9_42_pinmux { status = "disabled"; };	// enc0: gpio0_7 A
+			P9_92_pinmux { status = "disabled"; };
+			P9_41_pinmux { status = "disabled"; };	// enc0: gpio0_20 B
+			P9_91_pinmux { status = "disabled"; };
+			P8_16_pinmux { status = "disabled"; };	// enc0: gpio1_14 BTN
+
+			P8_14_pinmux { status = "disabled"; };	// enc1: gpio0_26 A
+			P8_11_pinmux { status = "disabled"; };	// enc1: gpio1_13 B
+			P8_15_pinmux { status = "disabled"; };	// enc1: gpio1_15 BTN
+
+			P9_25_pinmux { status = "disabled"; };	// audio: mcasp0_aclkx
+			P9_28_pinmux { status = "disabled"; };	// audio: mcasp0_fsx
+			P9_29_pinmux { status = "disabled"; };	// audio: mcasp0_axr2
+			P9_31_pinmux { status = "disabled"; };	// audio: mcasp0_ahclkx
+
+			P8_17_pinmux { status = "disabled"; };	// audio: gpio0_27 mute
+		};
+	};
+
+	fragment@2 {
+		target = <&am33xx_pinmux>;
+		__overlay__ {
+			bb_i2c1_pins: pinmux_bb_i2c1_pins {
+				pinctrl-single,pins = <
+					BONE_P9_18 (SLEWCTRL_SLOW | PIN_INPUT_PULLUP | MUX_MODE2)	// spi0_d1.i2c1_sda
+					BONE_P9_17 (SLEWCTRL_SLOW | PIN_INPUT_PULLUP | MUX_MODE2)	// spi0_cs0.i2c1_scl
+				>;
+			};
+
+			bb_uart2_pins: pinmux_bb_uart2_pins {
+				pinctrl-single,pins = <
+					BONE_P9_21 (PIN_OUTPUT | MUX_MODE1)	// P9_21: spi0_d0.uart2_txd
+					BONE_P9_22 (PIN_INPUT  | MUX_MODE1)	// P9_22: spi0_sclk.uart2_rxd
+				>;
+			};
+
+			bb_uart4_pins: pinmux_bb_uart4_pins {
+				pinctrl-single,pins = <
+					BONE_P9_13 (PIN_OUTPUT | MUX_MODE6)	// gpmc_wpn.uart4_txd_mux2
+					BONE_P9_11 (PIN_INPUT  | MUX_MODE6)	// gpmc_wait0.uart4_rxd_mux2
+				>;
+			};
+
+			enc0_pins: enc0_pins {
+				pinctrl-single,pins = <
+					BONE_P9_42 (PIN_INPUT_PULLUP | MUX_MODE7)	// enc0: gpio0_7 A
+					BONE_P9_41 (PIN_INPUT_PULLUP | MUX_MODE7)	// enc0: gpio0_20 B
+				>;
+			};
+
+			enc1_pins: enc1_pins {
+				pinctrl-single,pins = <
+					BONE_P8_14 (PIN_INPUT_PULLUP | MUX_MODE7)	// enc1: gpio0_26 A
+					BONE_P8_11 (PIN_INPUT_PULLUP | MUX_MODE7)	// enc1: gpio1_13 B
+				>;
+			};
+
+			enc_btn_pins: enc_btn_pins {
+				pinctrl-single,pins = <
+					BONE_P8_16 (PIN_INPUT_PULLUP | MUX_MODE7)	// enc0: gpio1_14 BTN
+					BONE_P8_15 (PIN_INPUT_PULLUP | MUX_MODE7)	// enc1: gpio1_15 BTN
+				>;
+			};
+
+			mcasp0_pins: mcasp0_pins {
+				pinctrl-single,pins = <
+					BONE_P9_25 (PIN_INPUT_PULLUP | MUX_MODE0)	// P9_25: mcasp0_ahcklx.mcasp0_ahclkx
+					BONE_P9_28 (PIN_OUTPUT_PULLDOWN | MUX_MODE2)	// P9_28: mcasp0_ahclkr.mcasp0_axr2
+					BONE_P9_29 (PIN_OUTPUT_PULLUP | MUX_MODE0)	// P9_29: mcasp0_fsx.mcasp0_fsx
+					BONE_P9_31 (PIN_OUTPUT_PULLDOWN | MUX_MODE0)	// P9_31: mcasp0_aclkx.mcasp0_aclkx
+				>;
+			};
+
+			dac_pins: dac_pins {
+				pinctrl-single,pins = <
+					BONE_P8_17 (PIN_OUTPUT_PULLDOWN | MUX_MODE7)	// mcasp0: gpio0_27 ena
+				>;
+			};
+
+		};
+	};
+
+	fragment@3 {
+		target = <&i2c1>;
+		__overlay__ {
+			status = "okay";
+			pinctrl-names = "default";
+			pinctrl-0 = <&bb_i2c1_pins>;
+
+			// this is the configuration part
+			clock-frequency = <400000>;
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			w1master: w1master@18 {
+				compatible = "maxim,ds2482";
+				reg = <0x18>;
+			};
+
+			press_dyn: press_dyn@28 {
+				compatible = "amsys,ams5915-0050-d";
+				reg = <0x28>;
+			};
+
+			extrtc: extrtc@68 {
+				compatible = "maxim,ds1338";
+				reg = <0x68>;
+			};
+
+			imu: imu@69 {
+				compatible = "invensense,icm20948";
+				reg = <0x69>;
+				mount-matrix =
+					"0.0", "0.0", "-1.0",
+					"-1.0", "0.0", "0.0",
+					"0.0", "-1.0", "0.0";
+			};
+
+			press_stat: press_stat@76 {
+				compatible = "meas,ms5611";
+				reg = <0x76>;
+			};
+
+			press_tek: press_tek@77 {
+				compatible = "meas,ms5611";
+				reg = <0x77>;
+			};
+
+			senscal_eep: senscal_eep@50 {
+				compatible = "atmel,24c16";
+				pagesize = <16>;
+				reg = <0x50>;
+			};
+
+		};
+	};
+
+	fragment@4 {
+		target = <&uart2>;
+		__overlay__ {
+			status = "okay";
+			pinctrl-names = "default";
+			pinctrl-0 = <&bb_uart2_pins>;
+		};
+	};
+
+	fragment@5 {
+		target = <&uart4>;
+		__overlay__ {
+			status = "okay";
+			pinctrl-names = "default";
+			pinctrl-0 = <&bb_uart4_pins>;
+		};
+	};
+
+	fragment@6 {
+		target = <&mcasp0>;
+		__overlay__ {
+			#sound-dai-cells = <0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&mcasp0_pins>;
+			status = "okay";
+			op-mode = <0>;	// MCASP_IIS_MODE
+			tdm-slots = <2>;
+			serial-dir = <0 0 1 0>;	// 0: INACTIVE, 1: TX, 2: RX
+			tx-num-evt = <32>;
+			rx-num-evt = <32>;
+		};
+	};
+};
+
