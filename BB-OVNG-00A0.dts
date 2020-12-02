@@ -335,5 +335,15 @@
 			rx-num-evt = <32>;
 		};
 	};
+
+	/*
+	 * we do not use cape eeprom data
+	 */
+	fragment@7 {
+		target = <&i2c2>;
+		__overlay__ {
+			status = "disabled";
+		};
+	};
 };
 
