@@ -5,10 +5,10 @@
 #include <dt-bindings/pinctrl/am33xx.h>
 
 / {
-	compatible = "ti,beaglebone", "ti,beaglebone-black", "ti,beaglebone-green";
+	compatible = "ti,beaglebone", "ti,beaglebone-black", "ti,beaglebone-green", "ti,beaglebone-green-wireless";
 
 	// identification
-	part-number = "BB-OVNG";
+	part-number = "BB-OVNG-BASEBOARD";
 	version = "00A0";
 
 	// resources this cape uses
@@ -333,16 +333,6 @@
 			serial-dir = <0 0 1 0>;	// 0: INACTIVE, 1: TX, 2: RX
 			tx-num-evt = <32>;
 			rx-num-evt = <32>;
-		};
-	};
-
-	/*
-	 * we do not use cape eeprom data
-	 */
-	fragment@7 {
-		target = <&i2c2>;
-		__overlay__ {
-			status = "disabled";
 		};
 	};
 };

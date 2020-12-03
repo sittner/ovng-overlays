@@ -2,7 +2,7 @@
 
 DTC_FLAGS += -Wno-unit_address_vs_reg
 
-all: BB-OVNG-00A0.dtbo BB-OVNG-CAN1-00A0.dtbo BB-OVNG-UART1-00A0.dtbo BB-OVNG-LCD7-00A0.dtbo BB-OVNG-LCD7-00A1.dtbo
+all: bone-i2c2.dtbo ovng-baseboard.dtbo ovng-uart1.dtbo ovng-can1.dtbo ovng-lcd7-adafruit.dtbo ovng-lcd7-seeed.dtbo
 
 
 %.dtspp: %.dts
