@@ -295,8 +295,8 @@
 			};
 
 			senscal_eep: senscal_eep@50 {
-				compatible = "atmel,24c16";
-				pagesize = <16>;
+				compatible = "atmel,24c01";
+				pagesize = <8>;
 				reg = <0x50>;
 			};
 
